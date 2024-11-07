@@ -6,6 +6,8 @@ import transform_utils as T
 import trimesh
 import open3d as o3d
 import imageio
+
+import torch
 import omnigibson as og
 from omnigibson.macros import gm
 from omnigibson.utils.usd_utils import PoseAPI, mesh_prim_mesh_to_trimesh_mesh, mesh_prim_shape_to_trimesh_mesh
@@ -453,6 +455,7 @@ class ReKepOGEnv:
         return False, pos_error, rot_error
 
     def _move_to_waypoint(self, target_pose_world, pos_threshold=0.02, rot_threshold=3.0, max_steps=10):
+        target_pose_world = torch.tensor(target_pose_world) # zzy: target_pose to tensor
         pos_errors = []
         rot_errors = []
         count = 0
@@ -464,6 +467,7 @@ class ReKepOGEnv:
                 break
             # convert world pose to robot pose
             target_pose_robot = np.dot(self.world2robot_homo, T.convert_pose_quat2mat(target_pose_world))
+            target_pose_robot = torch.tensor(target_pose_robot) # zzy: to tensor
             # convert to relative pose to be used with the underlying controller
             relative_position = target_pose_robot[:3, 3] - self.robot.get_relative_eef_position()
             relative_quat = T.quat_distance(T.mat2quat(target_pose_robot[:3, :3]), self.robot.get_relative_eef_orientation())

@@ -15,7 +15,7 @@ from utils import (
     path_length,
     transform_keypoints,
 )
-
+import torch
 # ====================================
 # = objective function
 # ====================================
@@ -78,8 +78,10 @@ def objective(opt_vars,
         debug_dict['ik_pos_error'].append(ik_result.position_error)
         debug_dict['ik_feasible'].append(ik_result.success)
         ik_cost += 20.0 * (ik_result.num_descents / max_iterations)
+
+        ik_result_cspace_position = torch.tensor(ik_result.cspace_position[:-1]) # zzy: change the ik_result.cspace_position[:-1] to tensor
         if ik_result.success:
-            reset_reg = np.linalg.norm(ik_result.cspace_position[:-1] - reset_joint_pos[:-1])
+            reset_reg = np.linalg.norm(ik_result_cspace_position - reset_joint_pos[:-1])
             reset_reg = np.clip(reset_reg, 0.0, 3.0)
         else:
             reset_reg = 3.0

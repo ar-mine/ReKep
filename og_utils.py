@@ -1,6 +1,7 @@
 from omnigibson.sensors.vision_sensor import VisionSensor
 import transform_utils as T
 import numpy as np
+import torch
 
 class OGCamera:
     """
@@ -91,7 +92,8 @@ def pixel_to_3d_points(depth_image, intrinsics, extrinsics):
 
     # Create a grid of (x, y) coordinates corresponding to each pixel in the image
     i, j = np.meshgrid(np.arange(W), np.arange(H), indexing='xy')
-
+    i = torch.tensor(i)
+    j = torch.tensor(j) # zzy: i, j to tensor
     # Unpack the intrinsic parameters
     fx, fy = intrinsics[0, 0], intrinsics[1, 1]
     cx, cy = intrinsics[0, 2], intrinsics[1, 2]

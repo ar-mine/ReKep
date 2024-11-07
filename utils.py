@@ -1,14 +1,17 @@
 import os
+from typing import Union
+import datetime
+
 import numpy as np
 from numba import njit
 import open3d as o3d
-import datetime
 import scipy.interpolate as interpolate
 from scipy.spatial.transform import Slerp
 from scipy.spatial.transform import Rotation as R
 from scipy.spatial.transform import RotationSpline
 import transform_utils as T
 import yaml
+import torch
 
 # ===============================================
 # = optimization utils
@@ -31,7 +34,9 @@ def unnormalize_vars(normalized_vars, og_bounds):
         vars[i] = (normalized_vars[i] + 1) / 2 * (b_max - b_min) + b_min
     return vars
 
-def calculate_collision_cost(poses, sdf_func, collision_points, threshold):
+def calculate_collision_cost(poses: Union[torch.Tensor|np.ndarray], sdf_func, collision_points, threshold):
+    if isinstance(poses, torch.Tensor):
+        poses = poses.cpu().numpy()
     assert poses.shape[1:] == (4, 4)
     transformed_pcs = batch_transform_points(collision_points, poses)
     transformed_pcs_flatten = transformed_pcs.reshape(-1, 3)  # [num_poses * num_points, 3]

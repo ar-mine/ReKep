@@ -7,7 +7,10 @@ NOTE: convention for quaternions is (x, y, z, w)
 import math
 from numba import njit
 import numpy as np
+from open3d.cuda.pybind.core import Tensor
 from scipy.spatial.transform import Rotation as R
+import torch
+from typing import Union
 
 PI = np.pi
 EPS = np.finfo(float).eps * 4.0
@@ -131,7 +134,8 @@ def convert_quat(q, to="xyzw"):
     raise Exception("convert_quat: choose a valid `to` argument (xyzw or wxyz)")
 
 
-def quat_multiply(quaternion1, quaternion0):
+def quat_multiply(quaternion1: Union[torch.Tensor, np.ndarray, list],
+                  quaternion0: Union[torch.Tensor, np.ndarray, list]):
     """
     Return multiplication of two quaternions (q1 * q0).
 
@@ -147,6 +151,10 @@ def quat_multiply(quaternion1, quaternion0):
     Returns:
         np.array: (x,y,z,w) multiplied quaternion
     """
+    if isinstance(quaternion0, torch.Tensor):
+        quaternion0 = quaternion0.cpu().numpy()
+    if isinstance(quaternion1, torch.Tensor):
+        quaternion1 = quaternion1.cpu().numpy()
     x0, y0, z0, w0 = quaternion0
     x1, y1, z1, w1 = quaternion1
     return np.array(
@@ -176,6 +184,8 @@ def quat_conjugate(quaternion):
     Returns:
         np.array: (x,y,z,w) quaternion conjugate
     """
+    if isinstance(quaternion, torch.Tensor):
+        quaternion = quaternion.cpu().numpy() # zzy: tensor to numpy
     return np.array(
         (-quaternion[0], -quaternion[1], -quaternion[2], quaternion[3]),
         dtype=quaternion.dtype,
@@ -444,7 +454,7 @@ def mat2euler(rmat):
     return R.from_matrix(M).as_euler("xyz")
 
 
-def pose2mat(pose):
+def pose2mat(pose: Union[torch.Tensor, np.ndarray])->torch.Tensor:
     """
     Converts pose to homogeneous matrix.
 
@@ -455,10 +465,14 @@ def pose2mat(pose):
     Returns:
         np.array: 4x4 homogeneous matrix
     """
-    homo_pose_mat = np.zeros((4, 4), dtype=pose[0].dtype)
-    homo_pose_mat[:3, :3] = quat2mat(pose[1])
-    homo_pose_mat[:3, 3] = np.array(pose[0], dtype=pose[0].dtype)
-    homo_pose_mat[3, 3] = 1.0
+    if not isinstance(pose[0], torch.Tensor):
+        pose[0] = torch.tensor(pose[0])
+
+    homo_pose_mat = torch.zeros((4, 4), dtype=pose[0].dtype)
+    homo_pose_mat[:3, :3] = torch.tensor(quat2mat(pose[1]))
+
+    homo_pose_mat[:3, 3] = torch.tensor(pose[0], dtype=pose[0].dtype)
+    homo_pose_mat[3, 3] = torch.tensor(1.0)
     return homo_pose_mat
 
 
@@ -1190,7 +1204,7 @@ def convert_pose_mat2quat(poses_mat):
         poses_quat = poses_quat[0]
     return poses_quat
 
-def convert_pose_quat2mat(poses_quat):
+def convert_pose_quat2mat(poses_quat)->torch.Tensor:
     """
     Convert poses from quat xyzw to mat format.
     Args:
